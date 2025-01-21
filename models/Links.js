@@ -1,6 +1,6 @@
 import { mongoose, Schema } from "mongoose";
 
-const urlSchema = new mongoose.Schema(
+const conversionSchema = new mongoose.Schema(
   {
     originalUrl: {
       type: String,
@@ -14,7 +14,6 @@ const urlSchema = new mongoose.Schema(
     creator: {
       type: String,
       required: true,
-      unique: true,
     },
     topic: {
       type: String,
@@ -25,6 +24,6 @@ const urlSchema = new mongoose.Schema(
   }
 );
 
-const Url = mongoose.model("Url", urlSchema);
+const links = mongoose.model("links", conversionSchema);
 
-export default Url;
+export default links;

@@ -11,17 +11,15 @@ const geoLocationSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const redirectSchema = new mongoose.Schema(
+const logSchema = new mongoose.Schema(
   {
     shortUrl: {
       type: String,
       required: true,
-      unique: true,
     },
     user: {
       type: String,
       required: true,
-      unique: true,
     },
     ip: {
       type: String,
@@ -45,6 +43,6 @@ const redirectSchema = new mongoose.Schema(
   }
 );
 
-const Redirect = mongoose.model("Redirect", redirectSchema);
+const log = mongoose.model("log", logSchema);
 
-export default Redirect;
+export default log;
