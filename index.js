@@ -130,10 +130,71 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
     res.send(`error: ${JSON.stringify(err)}`);
   }
 });
+
+app.get("/api/analytics/topic/:topic", isLoggedIn, async (req, res) => {
+  const category = req.params.topic;
+  await connectDB();
+  const time = new Date();
+  const timeLastWeek = new Date(time - 7 * 24 * 60 * 60 * 1000);
+  const categoryLinks = await links.find({ topic: category }).exec();
+  const topicWiseStats = await Promise.all(
+    categoryLinks.map(async (newLog) => {
+      const record = await log.findOne({
+        shortUrl: newLog.shortUrl,
+      });
+      return {
+        ...newLog._doc,
+        user: record ? record.user : "N/A",
+        ip: record ? record.ip : "N/A",
+        geoLocation: record ? record.geoLocation : "N/A",
+        os: record ? record.os : "N/A",
+        device: record ? record.device : "N/A",
+        time: record ? record.createdAt : null,
+      };
+    })
+  );
+  let totalClicks = 0;
+  let uniqueUsers = new Set();
+  let clicksByDay = {};
+  let urlDict = {};
+  for (let i = 0; i < topicWiseStats.length; i++) {
+    if (timeLastWeek <= topicWiseStats[i].createdAt <= time) {
+      totalClicks++;
+      uniqueUsers.add(topicWiseStats[i].user);
+      const uniqueDate = topicWiseStats[i].createdAt
+        .toISOString()
+        .split("T")[0];
+      const shortenedUrl = topicWiseStats[i].shortUrl;
+      if (uniqueDate in clicksByDay) {
+        clicksByDay[uniqueDate]++;
+      } else {
+        clicksByDay[uniqueDate] = 1;
+      }
+      if (shortenedUrl in urlDict) {
+        urlDict[shortenedUrl].totalCLicks++;
+        urlDict[shortenedUrl].uniqueUsers.add(topicWiseStats[i].user);
+      } else {
+        urlDict[shortenedUrl] = {};
+        urlDict[shortenedUrl].totalClicks = 1;
+        urlDict[shortenedUrl].uniqueUsers = new Set([topicWiseStats[i].user]);
+      }
+    }
+  }
+  for (const [key, value] of Object.entries(urlDict)) {
+    value.uniqueUsers = value.uniqueUsers.size;
+  }
+  const returnObject = {
+    totalClicks: totalClicks,
+    uniqueUsers: uniqueUsers.size,
+    clicksByDate: clicksByDay,
+    urls: urlDict,
+  };
+  res.send(`${category} : ${JSON.stringify(returnObject)}`);
+});
+
 app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
   try {
     await connectDB();
-    console.log(req.params.alias);
     const time = new Date();
     const timeLastWeek = new Date(time - 7 * 24 * 60 * 60 * 1000);
     const redirectEvents = (await log.find()) || [];
@@ -184,6 +245,7 @@ app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
     res.send(`error: ${err}`);
   }
 });
+
 app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
   try {
     await connectDB();
