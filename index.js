@@ -130,6 +130,111 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
     res.send(`error: ${JSON.stringify(err)}`);
   }
 });
+app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
+  try {
+    await connectDB();
+    console.log(req.params.alias);
+    const time = new Date();
+    const timeLastWeek = new Date(time - 7 * 24 * 60 * 60 * 1000);
+    const redirectEvents = (await log.find()) || [];
+    let totalClicks = 0;
+    let uniqueUsers = new Set();
+    let clicksByDay = {};
+    let osDict = {};
+    let deviceDict = {};
+    let totalUrls = new Set();
+
+    for (let i = 0; i < redirectEvents.length; i++) {
+      if (timeLastWeek <= redirectEvents[i].createdAt <= time) {
+        totalClicks++;
+        uniqueUsers.add(redirectEvents[i].user);
+        totalUrls.add(redirectEvents[i].shortUrl);
+        const uniqueDate = redirectEvents[i].createdAt
+          .toISOString()
+          .split("T")[0];
+        const os = redirectEvents[i].os;
+        const device = redirectEvents[i].os;
+        if (uniqueDate in clicksByDay) {
+          clicksByDay[uniqueDate]++;
+        } else {
+          clicksByDay[uniqueDate] = 1;
+        }
+        if (os in osDict) {
+          osDict[os]++;
+        } else {
+          osDict[os] = 1;
+        }
+        if (device in deviceDict) {
+          deviceDict[device]++;
+        } else {
+          deviceDict[device] = 1;
+        }
+      }
+    }
+    const returnObject = {
+      totalUrls: totalUrls.size,
+      totalClicks: totalClicks,
+      uniqueUsers: uniqueUsers.size,
+      clicksByDate: clicksByDay,
+      osType: osDict,
+      deviceType: deviceDict,
+    };
+    res.send(`overall : ${JSON.stringify(returnObject)}`);
+  } catch (err) {
+    res.send(`error: ${err}`);
+  }
+});
+app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
+  try {
+    await connectDB();
+    const time = new Date();
+    const timeLastWeek = new Date(time - 7 * 24 * 60 * 60 * 1000);
+    const redirectEvents =
+      (await log.find({ shortUrl: req.params.alias })) || [];
+    let totalClicks = 0;
+    let uniqueUsers = new Set();
+    let clicksByDay = {};
+    let osDict = {};
+    let deviceDict = {};
+    console.log("here");
+    for (let i = 0; i < redirectEvents.length; i++) {
+      if (timeLastWeek <= redirectEvents[i].createdAt <= time) {
+        totalClicks++;
+        uniqueUsers.add(redirectEvents[i].user);
+        const uniqueDate = redirectEvents[i].createdAt
+          .toISOString()
+          .split("T")[0];
+        const os = redirectEvents[i].os;
+        const device = redirectEvents[i].os;
+        if (uniqueDate in clicksByDay) {
+          clicksByDay[uniqueDate]++;
+        } else {
+          clicksByDay[uniqueDate] = 1;
+        }
+        if (os in osDict) {
+          osDict[os]++;
+        } else {
+          osDict[os] = 1;
+        }
+        if (device in deviceDict) {
+          deviceDict[device]++;
+        } else {
+          deviceDict[device] = 1;
+        }
+      }
+    }
+    const returnObject = {
+      totalClicks: totalClicks,
+      uniqueUsers: uniqueUsers.size,
+      clicksByDate: clicksByDay,
+      osType: osDict,
+      deviceType: deviceDict,
+    };
+    res.send(`${req.params.alias} : ${JSON.stringify(returnObject)}`);
+  } catch (err) {
+    res.send(`error: ${err}`);
+  }
+});
 
 app.get("/protected", isLoggedIn, async (req, res) => {
   await connectDB();
