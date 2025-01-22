@@ -19,9 +19,9 @@ export default app;' and run `npm test` to run tests
 
 - revert back the index.js to run the server
 
-## Run From Docker - make sure you have colima installed
+## Run From Docker - colima
 
-- ` colima start`
+- `colima start`
 - `docker build -t url-shortner .`
 - `docker run -p 5000:5000 url-shortner`
 
