@@ -10,24 +10,9 @@ import log from "./models/Log.js";
 import useragent from "express-useragent";
 import axios from "axios";
 import rateLimit from "express-rate-limit";
-import redis from "@redis/client";
+import connectClient from "./config/client.js";
 
 dotenv.config();
-const client = redis.createClient({
-  url:
-    "redis://" +
-    process.env.REDIS_USER +
-    ":" +
-    process.env.REDIS_PASSWORD +
-    "@" +
-    process.env.REDIS_ENDPOINT +
-    ":" +
-    process.env.REDIS_PORT,
-});
-client.on("connect", () => {
-  console.log("connected");
-});
-client.connect();
 
 const app = express();
 app.use(express.json());
@@ -79,7 +64,6 @@ app.post("/redirect", isLoggedIn, (req, res) => {
   if (!shortUrl) {
     return res.status(400).send("shortUrl is required.");
   }
-
   res.redirect(`/api/shorten/${encodeURIComponent(shortUrl)}`);
 });
 app.get("/protected", isLoggedIn, async (req, res) => {
@@ -100,7 +84,6 @@ app.get("/logout", (req, res, next) => {
     });
   });
 });
-
 app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
   const fullUrl = req.body.fullUrl;
   let category = req.body.topic;
@@ -125,20 +108,19 @@ app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
     });
     res.send(`Shortened url ${alias}`);
   } catch (err) {
-    console.log(err);
     res.send(`error: ${JSON.stringify(err)}`);
   }
 });
-
 app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
   if (!req.params.shortUrl) {
     return res.status(400).json({ error: "shortUrl required." });
   }
+  const client = await connectClient();
   const data = await client.get(req.params.shortUrl.toString());
   await connectDB();
-
   let redirectUrl = "";
   if (data) {
+    console.log(data);
     redirectUrl = data.toString();
   } else {
     const url = await links.findOne({ shortUrl: req.params.shortUrl });
@@ -147,7 +129,6 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
     }
     redirectUrl = url.originalUrl;
   }
-
   try {
     const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     const os = req.useragent.os;
@@ -181,7 +162,7 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
         os: os,
         device: device,
       });
-      await client.set(req.params.shortUrl.toString(), redirectUrl);
+      await client.set(req.params.shortUrl.toString(), redirectUrl, "EX", 3600);
       res.redirect(redirectUrl);
     } catch (err) {
       res.send(`error: ${JSON.stringify(err)}`);
@@ -190,7 +171,6 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
     res.send(`error: ${JSON.stringify(err)}`);
   }
 });
-
 app.get("/api/analytics/topic/:topic", isLoggedIn, async (req, res) => {
   const category = req.params.topic;
   await connectDB();
@@ -257,7 +237,6 @@ app.get("/api/analytics/topic/:topic", isLoggedIn, async (req, res) => {
   };
   res.send(`${category} : ${JSON.stringify(returnObject)}`);
 });
-
 app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
   try {
     await connectDB();
@@ -320,7 +299,6 @@ app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
     res.send(`error: ${err}`);
   }
 });
-
 app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
   try {
     await connectDB();
@@ -381,7 +359,6 @@ app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
     res.send(`error: ${err}`);
   }
 });
-
 app.listen(process.env.PORT, () =>
   console.log(`listening on port: ${process.env.PORT}`)
 );
