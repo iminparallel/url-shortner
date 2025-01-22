@@ -4,6 +4,10 @@
 
 This API is a URL shortening service with analytics and user tracking features.
 
+## Base URL
+
+`http://localhost:<PORT>/api`
+
 ## Authentication
 
 ### Google OAuth Authentication
@@ -34,6 +38,16 @@ This API is a URL shortening service with analytics and user tracking features.
 
 - **Endpoint**: `/api/shorten`
 - **Method**: `POST`
+- **Request Body**:
+- **Rate Limited**
+
+```{
+  "fullUrl": "https://example.com",
+  "topic": "category_name",
+  "alias": "customAlias"
+}
+```
+
 - **Authentication Required**: Yes
 - **Rate Limiting**: 50 requests per hour
 - **Body Parameters**:
@@ -49,6 +63,11 @@ This API is a URL shortening service with analytics and user tracking features.
 - **Authentication Required**: Yes
 - **Description**: Redirects the user to the original URL associated with the shortened URL. Also logs analytics such as the user's IP, operating system, device, and geolocation.
 
+```{
+  "message": "Shortened url <alias>"
+}
+```
+
 ## Analytics
 
 ### Analytics by Topic
@@ -61,6 +80,29 @@ This API is a URL shortening service with analytics and user tracking features.
   - Unique users
   - Clicks per day
   - Statistics for each URL under the topic
+
+```{
+  "totalClicks": 150,
+  "uniqueUsers": 30,
+  "clicksByDate": [
+    {
+      "day": "2025-01-15",
+      "clicks": 10
+    },
+    ...
+  ],
+  "urls": [
+    {
+      "shortUrl": "abc123",
+      "stats": {
+        "totalClicks": 50,
+        "uniqueUsers": 25
+      }
+    },
+    ...
+  ]
+}
+```
 
 ### Overall Analytics
 
@@ -75,6 +117,34 @@ This API is a URL shortening service with analytics and user tracking features.
   - Operating system distribution
   - Device type distribution
 
+```{
+  "totalUrls": 10,
+  "totalClicks": 200,
+  "uniqueUsers": 50,
+  "clicksByDate": [
+    {
+      "day": "2025-01-15",
+      "clicks": 15
+    },
+    ...
+  ],
+  "osType": [
+    {
+      "os": "Windows",
+      "clicks": 100
+    },
+    ...
+  ],
+  "deviceType": [
+    {
+      "device": "Desktop",
+      "clicks": 150
+    },
+    ...
+  ]
+}
+```
+
 ### Analytics for a Specific Alias
 
 - **Endpoint**: `/api/analytics/:alias`
@@ -86,3 +156,30 @@ This API is a URL shortening service with analytics and user tracking features.
   - Clicks per day
   - Operating system distribution
   - Device type distribution
+
+```{
+  "totalClicks": 50,
+  "uniqueUsers": 20,
+  "clicksByDate": [
+    {
+      "day": "2025-01-15",
+      "clicks": 10
+    },
+    ...
+  ],
+  "osType": [
+    {
+      "os": "Windows",
+      "clicks": 30
+    },
+    ...
+  ],
+  "deviceType": [
+    {
+      "device": "Desktop",
+      "clicks": 40
+    },
+    ...
+  ]
+}
+```
