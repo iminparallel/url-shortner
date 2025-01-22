@@ -2,7 +2,7 @@
 
 ### Live Location
 
-- https://url-shortner-production-d894.up.railway.app/
+- url-shortner-production-d894.up.railway.app
 
 ### Run this project
 
