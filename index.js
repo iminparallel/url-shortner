@@ -10,27 +10,30 @@ import log from "./models/Log.js";
 import useragent from "express-useragent";
 import axios from "axios";
 import rateLimit from "express-rate-limit";
-
-const specificApiLimiter = rateLimit({
-  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
-  windowMs: 60 * 60 * 1000,
-  max: 50,
-  message: "You have exceeded the 3 requests per hour limit!",
-  headers: true,
-});
+import redis from "@redis/client";
 
 dotenv.config();
+const client = redis.createClient({
+  url:
+    "redis://" +
+    process.env.REDIS_USER +
+    ":" +
+    process.env.REDIS_PASSWORD +
+    "@" +
+    process.env.REDIS_ENDPOINT +
+    ":" +
+    process.env.REDIS_PORT,
+});
+client.on("connect", () => {
+  console.log("connected");
+});
+client.connect();
+
 const app = express();
 app.use(express.json());
 app.set("view engine", "ejs");
-
 app.use(express.urlencoded({ extended: true }));
 app.use(useragent.express());
-
-function isLoggedIn(req, res, next) {
-  req.user ? next() : res.sendStatus(401);
-}
-
 app.use(
   session({
     secret: process.env.EXPRESS_SECRET,
@@ -40,6 +43,18 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+
+const specificApiLimiter = rateLimit({
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  windowMs: 60 * 60 * 1000,
+  max: 50,
+  message: "You have exceeded the 3 requests per hour limit!",
+  headers: true,
+});
+
+function isLoggedIn(req, res, next) {
+  req.user ? next() : res.sendStatus(401);
+}
 
 app.get("/", (req, res) => {
   res.send('<a href="/auth/google">Authenticate with Google</a>');
@@ -57,6 +72,33 @@ app.get(
 );
 app.get("/auth/google/failure", (req, res) => {
   res.send("Failed to authenticate..");
+});
+app.post("/redirect", isLoggedIn, (req, res) => {
+  const shortUrl = req.body.shortUrl;
+
+  if (!shortUrl) {
+    return res.status(400).send("shortUrl is required.");
+  }
+
+  res.redirect(`/api/shorten/${encodeURIComponent(shortUrl)}`);
+});
+app.get("/protected", isLoggedIn, async (req, res) => {
+  await connectDB();
+  const urls = (await links.find()) || [];
+  res.render("index", { urls: urls.reverse() });
+});
+app.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    req.session.destroy((err) => {
+      if (err) {
+        return next(err);
+      }
+      res.send("Goodbye!");
+    });
+  });
 });
 
 app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
@@ -92,11 +134,20 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
   if (!req.params.shortUrl) {
     return res.status(400).json({ error: "shortUrl required." });
   }
+  const data = await client.get(req.params.shortUrl.toString());
   await connectDB();
-  const url = await links.findOne({ shortUrl: req.params.shortUrl });
-  if (!url) {
-    return res.sendStatus(404);
+
+  let redirectUrl = "";
+  if (data) {
+    redirectUrl = data.toString();
+  } else {
+    const url = await links.findOne({ shortUrl: req.params.shortUrl });
+    if (!url) {
+      return res.sendStatus(404);
+    }
+    redirectUrl = url.originalUrl;
   }
+
   try {
     const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     const os = req.useragent.os;
@@ -109,7 +160,6 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
       latitude: null,
       longitude: null,
     };
-    console.log(ip, os, device);
     try {
       const response = await axios.get(`https://ipapi.co/${ip}/json/`);
       geoLocation = {
@@ -131,7 +181,8 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
         os: os,
         device: device,
       });
-      res.redirect(url.originalUrl);
+      await client.set(req.params.shortUrl.toString(), redirectUrl);
+      res.redirect(redirectUrl);
     } catch (err) {
       res.send(`error: ${JSON.stringify(err)}`);
     }
@@ -195,8 +246,14 @@ app.get("/api/analytics/topic/:topic", isLoggedIn, async (req, res) => {
   const returnObject = {
     totalClicks: totalClicks,
     uniqueUsers: uniqueUsers.size,
-    clicksByDate: clicksByDay,
-    urls: urlDict,
+    clicksByDate: Object.getOwnPropertyNames(clicksByDay).map((key) => ({
+      day: key,
+      clicks: clicksByDay[key],
+    })),
+    urls: Object.getOwnPropertyNames(urlDict).map((key) => ({
+      shortUrl: key,
+      stats: urlDict[key],
+    })),
   };
   res.send(`${category} : ${JSON.stringify(returnObject)}`);
 });
@@ -245,9 +302,18 @@ app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
       totalUrls: totalUrls.size,
       totalClicks: totalClicks,
       uniqueUsers: uniqueUsers.size,
-      clicksByDate: clicksByDay,
-      osType: osDict,
-      deviceType: deviceDict,
+      clicksByDate: Object.getOwnPropertyNames(clicksByDay).map((key) => ({
+        day: key,
+        clicks: clicksByDay[key],
+      })),
+      osType: Object.getOwnPropertyNames(osDict).map((key) => ({
+        os: key,
+        clicks: osDict[key],
+      })),
+      deviceType: Object.getOwnPropertyNames(deviceDict).map((key) => ({
+        device: key,
+        clicks: deviceDict[key],
+      })),
     };
     res.send(`overall : ${JSON.stringify(returnObject)}`);
   } catch (err) {
@@ -297,9 +363,18 @@ app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
     const returnObject = {
       totalClicks: totalClicks,
       uniqueUsers: uniqueUsers.size,
-      clicksByDate: clicksByDay,
-      osType: osDict,
-      deviceType: deviceDict,
+      clicksByDate: Object.getOwnPropertyNames(clicksByDay).map((key) => ({
+        day: key,
+        clicks: clicksByDay[key],
+      })),
+      osType: Object.getOwnPropertyNames(osDict).map((key) => ({
+        os: key,
+        clicks: osDict[key],
+      })),
+      deviceType: Object.getOwnPropertyNames(deviceDict).map((key) => ({
+        device: key,
+        clicks: deviceDict[key],
+      })),
     };
     res.send(`${req.params.alias} : ${JSON.stringify(returnObject)}`);
   } catch (err) {
@@ -307,15 +382,6 @@ app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
   }
 });
 
-app.get("/protected", isLoggedIn, async (req, res) => {
-  await connectDB();
-  const urls = (await links.find()) || [];
-  res.render("index", { urls: urls });
-});
-app.get("/logout", (req, res) => {
-  req.logout();
-  req.session.destroy();
-  res.send("Goodbye!");
-});
-
-app.listen(5000, () => console.log("listening on port: 5000"));
+app.listen(process.env.PORT, () =>
+  console.log(`listening on port: ${process.env.PORT}`)
+);

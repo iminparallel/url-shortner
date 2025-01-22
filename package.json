@@ -12,6 +12,7 @@
     "nodemon": "^3.1.9"
   },
   "dependencies": {
+    "@redis/client": "^1.6.0",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
@@ -22,6 +23,7 @@
     "mongoose": "^8.9.5",
     "passport": "^0.7.0",
     "passport-google-oauth2": "^0.2.0",
+    "redis": "^4.7.0",
     "shortid": "^2.2.8"
   },
   "type": "module"
