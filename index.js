@@ -32,8 +32,8 @@ app.use(passport.session());
 
 const specificApiLimiter = rateLimit({
   keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
-  windowMs: 60 * 60 * 1000,
-  max: 50,
+  windowMs: 3600 * 1000,
+  max: 3,
   message: "You have exceeded the 3 requests per hour limit!",
   headers: true,
 });
@@ -85,6 +85,7 @@ app.get("/logout", (req, res, next) => {
     });
   });
 });
+
 app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
   const fullUrl = req.body.fullUrl;
   let category = req.body.topic;
@@ -112,6 +113,7 @@ app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
     res.status(200).send(`error: ${JSON.stringify(err)}`);
   }
 });
+
 app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
   if (!req.params.shortUrl) {
     return res.status(400).json({ error: "shortUrl required." });
@@ -172,6 +174,7 @@ app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
     res.send(`error: ${JSON.stringify(err)}`);
   }
 });
+
 app.get("/api/analytics/topic/:topic", isLoggedIn, async (req, res) => {
   const category = req.params.topic;
   await connectDB();
@@ -238,6 +241,7 @@ app.get("/api/analytics/topic/:topic", isLoggedIn, async (req, res) => {
   };
   res.send(`${category} : ${JSON.stringify(returnObject)}`);
 });
+
 app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
   try {
     await connectDB();
@@ -250,7 +254,6 @@ app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
     let osDict = {};
     let deviceDict = {};
     let totalUrls = new Set();
-
     for (let i = 0; i < redirectEvents.length; i++) {
       if (timeLastWeek <= redirectEvents[i].createdAt <= time) {
         totalClicks++;
@@ -300,6 +303,7 @@ app.get("/api/analytics/overall/", isLoggedIn, async (req, res) => {
     res.send(`error: ${err}`);
   }
 });
+
 app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
   try {
     await connectDB();
