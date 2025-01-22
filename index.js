@@ -9,6 +9,15 @@ import connectDB from "./config/db.js";
 import log from "./models/Log.js";
 import useragent from "express-useragent";
 import axios from "axios";
+import rateLimit from "express-rate-limit";
+
+const specificApiLimiter = rateLimit({
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  windowMs: 60 * 60 * 1000,
+  max: 50,
+  message: "You have exceeded the 3 requests per hour limit!",
+  headers: true,
+});
 
 dotenv.config();
 const app = express();
@@ -50,7 +59,7 @@ app.get("/auth/google/failure", (req, res) => {
   res.send("Failed to authenticate..");
 });
 
-app.post("/api/shorten", isLoggedIn, async (req, res) => {
+app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
   const fullUrl = req.body.fullUrl;
   let category = req.body.topic;
   let alias = req.body.alias;
