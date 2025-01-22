@@ -13,7 +13,7 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL:
-        "https://url-shortner-production-d894.up.railway.app/google/callback",
+        "https://url-shortner-production-d894.up.railway.app/auth/google/callback",
       passReqToCallback: true,
     },
     async function (request, accessToken, refreshToken, profile, done) {
