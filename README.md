@@ -1,5 +1,24 @@
 # url-shortner
 
+### Run this project
+
+- clone the repor
+- populate the .env according to example.env
+- install packages
+  `npm i`
+- run the project
+  `npm start`
+- Change the index.js like this
+  `
+/*
+app.listen(process.env.PORT, () =>
+  console.log(`listening on port: ${process.env.PORT}`)
+  );\*/
+
+export default app;` and run `npm test` to run tests
+
+- revert back the index.js to run the server
+
 # API Documentation
 
 This API is a URL shortening service with analytics and user tracking features.

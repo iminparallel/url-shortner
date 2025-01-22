@@ -26,6 +26,7 @@ app.use(
     saveUninitialized: true,
   })
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -42,7 +43,7 @@ function isLoggedIn(req, res, next) {
 }
 
 app.get("/", (req, res) => {
-  res.send('<a href="/auth/google">Authenticate with Google</a>');
+  res.status(200).send('<a href="/auth/google">Authenticate with Google</a>');
 });
 app.get(
   "/auth/google",
@@ -108,7 +109,7 @@ app.post("/api/shorten", isLoggedIn, specificApiLimiter, async (req, res) => {
     });
     res.send(`Shortened url ${alias}`);
   } catch (err) {
-    res.send(`error: ${JSON.stringify(err)}`);
+    res.status(200).send(`error: ${JSON.stringify(err)}`);
   }
 });
 app.get("/api/shorten/:shortUrl", isLoggedIn, async (req, res) => {
@@ -359,6 +360,10 @@ app.get("/api/analytics/:alias", isLoggedIn, async (req, res) => {
     res.send(`error: ${err}`);
   }
 });
+
 app.listen(process.env.PORT, () =>
   console.log(`listening on port: ${process.env.PORT}`)
 );
+/*
+export default app;
+*/
