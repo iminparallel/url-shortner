@@ -9,15 +9,29 @@
 - run the project
   `npm start`
 - Change the index.js like this
-  `
-/*
-app.listen(process.env.PORT, () =>
+  '
+  /\*
+  app.listen(process.env.PORT, () =>
   console.log(`listening on port: ${process.env.PORT}`)
   );\*/
 
-export default app;` and run `npm test` to run tests
+export default app;' and run `npm test` to run tests
 
 - revert back the index.js to run the server
+
+## Run From Docker - make sure you have colima installed
+
+- ` colima start`
+- `docker build -t url-shortner .`
+- `docker run -p 5000:5000 url-shortner`
+
+## Implemented Features
+
+- Google oAuth
+- Redirect Service
+- Analytics Apis
+- Redis cache
+- Mongo Database
 
 # API Documentation
 
